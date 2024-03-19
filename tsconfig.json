@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "esModuleInterop": true,
+        "outDir": "./build",
+        "strict": false,
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "lib": ["es6", "dom"],
+        "typeRoots": ["node_modules/@types"],
+        "noEmitOnError": true,
+        "noImplicitAny": true,
+        "jsx": "react",
+    },
+    "include": ["src/**/*", "tests/index.test.ts"],
+    "exclude": ["node_modules", "**/*.test.ts", "dist", "build"]
+}
