@@ -1,5 +1,5 @@
 {
-  "name": "typedoc-plugin-translation",
+  "name": "@niuee/typedoc-plugin-translation",
   "version": "0.0.1",
   "description": "This is the consolidated plugin for my projects using typedoc",
   "main": "./build/index.cjs",
