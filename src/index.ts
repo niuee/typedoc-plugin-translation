@@ -39,7 +39,11 @@ export function load(app: Application) {
             break;
         case "inject":
             app.logger.info(`Injecting translation for ${l10nCode}`);
-            injectTranslation(l10nCode, context);
+            injectTranslation(l10nCode, context, app);
+            break;
+        case "default":
+            app.logger.info("Stripping the translation tags");
+            dfs(context.project, []);
             break;
         default:
             app.logger.info(`Generating translation jsons for ${l10nCode}`);
@@ -49,10 +53,9 @@ export function load(app: Application) {
     });
 }
 
-function injectTranslation(l10nCode: string, context: Context){
+function injectTranslation(l10nCode: string, context: Context, app: Application){
     const curStagingTranslationFile = resolve(`./translations/staging/${l10nCode}`, "translation.json");
     const projectReflection = context.project;
-    const res = dfs(projectReflection, []);
     if(existsSync(curStagingTranslationFile)){
         const curStagingTranslation = JSON.parse(readFileSync(curStagingTranslationFile, "utf-8")) as TranslationTrimmed;
         const translationKeys = Object.keys(curStagingTranslation);
@@ -66,15 +69,24 @@ function injectTranslation(l10nCode: string, context: Context){
                     if(originalText !== undefined && curStagingItem.originalText == originalText){
                         item[finalPath] = curStagingItem.translation;
                     }
+                } else {
+                    app.logger.warn(`Path not found: ${curStagingItem.projectPath}`);
+                    app.logger.warn("The original documentation probably has changed since the translation was generated. Please regenerate the translation file.")
                 }
             }
         }
+    } else {
+        app.logger.error(`Translation file not found: ${curStagingTranslationFile}`);
+        return;
     }
+    app.logger.info("No Discrepency found in the translation file. Injecting the translation to the documentation");
 }
 
 function generateTranslationJSON(l10nCode: string, context: Context){
     const curStagingTranslationFile = resolve(`./translations/staging/${l10nCode}`, "translation.json");
     const curProdTranslationFile = resolve(`./translations/prod/${l10nCode}`, "translation.json");
+    const curStagingReadMEFile = resolve(`./translations/staging/${l10nCode}`, "README.md");
+    const curProdReadMEFile = resolve(`./translations/prod/${l10nCode}`, "README.md");
     const projectReflection = context.project;
     const res = dfs(projectReflection, []);
     const trimmedDownData = {} as TranslationTrimmed;
@@ -111,6 +123,13 @@ function generateTranslationJSON(l10nCode: string, context: Context){
         trimmedDownData[translationKey] = trimmedItem;
     }
     mkdirSync(`./translations/staging/${l10nCode}`, {recursive: true});
+    if(!existsSync(curStagingReadMEFile)){
+        if(existsSync(curProdReadMEFile)){
+            cpSync(curProdReadMEFile, curStagingReadMEFile);
+        } else {
+            cpSync(resolve(`./`, "README.md"), curStagingReadMEFile);
+        }
+    }
     writeFileSync(resolve(`./translations/staging/${l10nCode}`, "translation.json"), JSON.stringify(trimmedDownData, null, 2));
     return res;
 }
