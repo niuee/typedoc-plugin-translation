@@ -1,4 +1,4 @@
-import { Application, ParameterType, Converter, Context, DefaultThemeRenderContext, ProjectReflection, ReflectionKind, Reflection, Models} from "typedoc";
+import { Application, ParameterType, Converter, Context, DefaultThemeRenderContext, ProjectReflection, ReflectionKind, Reflection, Models, Renderer} from "typedoc";
 import crypto from 'crypto';
 import { writeFileSync, mkdirSync, readFileSync, existsSync, cpSync } from "node:fs";
 import { resolve } from "node:path";
@@ -51,6 +51,7 @@ export function load(app: Application) {
             break;
         }
     });
+
 }
 
 function injectTranslation(l10nCode: string, context: Context, app: Application){
