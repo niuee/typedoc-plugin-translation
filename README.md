@@ -1,0 +1,1 @@
+This is a typedoc plugin which is used to generate translation files.
