@@ -1,9 +1,21 @@
-import { Application, ParameterType, Converter, Context, DefaultThemeRenderContext, ProjectReflection, ReflectionKind, Reflection, Models, Renderer} from "typedoc";
+import { Application, ParameterType, Converter, Context, DefaultThemeRenderContext, ProjectReflection, ReflectionKind, Reflection, Models, Renderer, ContainerReflection, DeclarationReflection} from "typedoc";
 import crypto from 'crypto';
 import { writeFileSync, mkdirSync, readFileSync, existsSync, cpSync } from "node:fs";
 import { resolve } from "node:path";
 
 const reflectionKind = ReflectionKind;
+
+const constantGroup = {
+    "Constructors": "placeholder",
+    "Properties": "placeholder",
+    "Methods": "placeholder",
+    "Accessors": "placeholder",
+    "Namespaces": "placeholder",
+    "Classes": "placeholder",
+    "Interfaces": "placeholder",
+    "Type Aliases": "placeholder",
+    "Functions": "placeholder",
+};
 
 export function load(app: Application) {
     app.options.addDeclaration({
@@ -57,6 +69,8 @@ export function load(app: Application) {
 function injectTranslation(l10nCode: string, context: Context, app: Application){
     const curStagingTranslationFile = resolve(`./translations/staging/${l10nCode}`, "translation.json");
     const projectReflection = context.project;
+    //NOTE This is necessary because the translation flag is still present in the project reflection need to remove and stuff
+    dfs(projectReflection, []);
     if(existsSync(curStagingTranslationFile)){
         const curStagingTranslation = JSON.parse(readFileSync(curStagingTranslationFile, "utf-8")) as TranslationTrimmed;
         const translationKeys = Object.keys(curStagingTranslation);
@@ -69,6 +83,8 @@ function injectTranslation(l10nCode: string, context: Context, app: Application)
                     const originalText = getByPath(projectReflection, curStagingItem.projectPath);
                     if(originalText !== undefined && curStagingItem.originalText == originalText){
                         item[finalPath] = curStagingItem.translation;
+                    } else {
+                        app.logger.warn("The original documentation probably has changed since the translation was generated. Please regenerate the translation file.")
                     }
                 } else {
                     app.logger.warn(`Path not found: ${curStagingItem.projectPath}`);
@@ -251,6 +267,14 @@ function dfs(node: Reflection, path: string[] = [], humanReadablePath: string[] 
             });
         }
     }
+    if("groups" in node && node.groups !== undefined){
+        const groups = getGroups(node as ProjectReflection | ContainerReflection | DeclarationReflection, path, humanReadablePath);
+        if(groups !== undefined && groups.length > 0){
+            groups.forEach((group)=>{
+                res[group.translationKey] = group;
+            });
+        }
+    }
     if(node.comment !== undefined){
         const translations = parseTranslationComment(node, path, humanReadablePath);
         const translationBlocks = parseTranslationBlockComment(node, path, humanReadablePath);
@@ -317,6 +341,7 @@ function parseAccessorComment(node: Reflection, path: string[], parentNode: Refl
         node.comment.getTags("@accessorDescription").forEach((comment)=>{
             comment.content.forEach((content, index)=>{
                 if(content.kind !== "text"){
+                    parentNode.comment.summary.push({...content});
                     return;
                 }
                 const item: TranslationItem = {
@@ -357,6 +382,7 @@ function parseTranslationComment(node: Reflection, path: string[], humanReadable
         node.comment.getTags("@translation").forEach((comment)=>{
             comment.content.forEach((content, index)=>{
                 if(content.kind !== "text"){
+                    node.comment.summary.push({...content});
                     return;
                 }
                 const item: TranslationItem = {
@@ -489,4 +515,30 @@ export function getByPath(root: any, path: string[]){
         obj = obj[path[index]];
     }
     return obj;
+}
+
+export function getGroups(node: ProjectReflection | ContainerReflection | DeclarationReflection, path: string[] = [], humanReadablePath: string[] = []){
+    const res: TranslationItem[] = [];
+    if(node.groups){
+        let items = node.groups.map((group, index) => {
+            const projectPath = [...path, "groups", `index-${index}`, "title"];
+            const flatPath = [];
+            flatPath.push(`${node.id}`);
+            flatPath.push("groups");
+            flatPath.push(`index-${index}`);
+            const translationKey = crypto.createHash('md5').update(`${projectPath.join("")}${group.title}${"group"}`).digest('hex');
+            const locationIdentifier = crypto.createHash('md5').update(`${flatPath.join("")}${group.title}${"group"}`).digest('hex');
+            const item = { translationKey: translationKey, flatPath: flatPath, projectPath: projectPath, originalText: group.title, translation: "", kind: "group", locationIdentifier: locationIdentifier, humanReadablePath: [...humanReadablePath, "groups", `index-${index}`, "title"].join(" > ")};
+            return item;
+        });
+        items = items.filter((item)=>{
+            return !(item.originalText in constantGroup);
+        });
+        return items.map((item, index)=>{
+            item.flatPath.push(`index-${index}`);
+            item.locationIdentifier = crypto.createHash('md5').update(`${item.flatPath.join("")}${item.originalText}${"group"}`).digest('hex');
+            return {...item};
+        });
+    }
+    return res;
 }
