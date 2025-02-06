@@ -70,16 +70,11 @@ export default [
   // the overarching package build
   {
     input: 'src/index.ts',
-    output: [{
-      file: packageJson.main,
-      format: 'cjs',
-      name: '@niuee/board',
-      sourcemap: true,
-    },
+    output: [
     {
-      file: packageJson.module,
+      file: packageJson.main,
       format: 'esm',
-      name: '@niuee/board',
+      name: '@niuee/typedoc-plugin-translation',
       sourcemap: true
     }
     ],

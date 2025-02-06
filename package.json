@@ -2,9 +2,9 @@
   "name": "@niuee/typedoc-plugin-translation",
   "version": "0.0.2",
   "description": "This is the consolidated plugin for my projects using typedoc",
-  "main": "./build/index.cjs",
-  "module": "./build/index.js",
+  "main": "./build/index.js",
   "types": "./build/index.d.ts",
+  "type": "module",
   "scripts": {
     "rollup": "rollup --config rollup.config.js --bundleConfigAsCjs",
     "build": "pnpm run rollup && pnpm run move-package",
@@ -15,26 +15,24 @@
   "author": "",
   "license": "ISC",
   "peerDependencies": {
-    "typedoc": "^0.25.9"
+    "typedoc": "^0.27.6"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^25.0.7",
-    "@rollup/plugin-html": "^1.0.3",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-html": "^2.0.0",
     "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^15.1.0",
-    "@rollup/plugin-terser": "^0.4.3",
-    "@rollup/plugin-typescript": "^11.1.2",
-    "@types/jest": "^29.5.1",
-    "@types/node": "^20.11.28",
-    "@types/rollup-plugin-generate-package-json": "^3.2.8",
-    "jest": "^29.5.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.1",
+    "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "rollup": "^3.26.2",
-    "rollup-plugin-generate-package-json": "^3.2.0",
-    "rollup-plugin-typescript2": "^0.36.0",
-    "ts-jest": "^29.0.5",
-    "ts-node": "^10.9.1",
-    "tslib": "^2.6.0",
-    "typedoc": "0.25.9"
-  }
+    "rollup": "^4.34.4",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.8.1",
+    "typedoc": "0.27.6"
+  },
+  "packageManager": "pnpm@10.2.0+sha256.72f1630812107c8723eb5be4517725f3e13f09cfd8f71571cf29f23ce318bdb7"
 }
