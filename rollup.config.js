@@ -1,12 +1,8 @@
 // rollup.config.js
 import typescript from '@rollup/plugin-typescript';
-// import typescript from 'rollup-plugin-typescript2';
 import resolve from '@rollup/plugin-node-resolve';
-import dts from "rollup-plugin-dts";
 import terser from "@rollup/plugin-terser";
-import generatePackageJson from 'rollup-plugin-generate-package-json';
 import path from 'path';
-import commonjs from "@rollup/plugin-commonjs";
 const packageJson = require("./package.json");
 
 
@@ -14,24 +10,17 @@ const fs = require('fs');
 
 const plugins = [
     resolve(),
-    commonjs(),
     typescript({
       tsconfig: './tsconfig.json',
       declaration: false,
-      // useTsconfigDeclarationDir: true,
+      exclude: ["node_modules", "**/*.test.ts", "dist", "build", "devserver/**/*"],
     }),
     terser({
       mangle: false,
     }),
 ]
 
-export const getComponentsFolders = (entry) => {
-   const dirs = fs.readdirSync(entry)
-   const dirsWithoutIndex = dirs.filter(name => name !== 'index.ts' && name !== 'utils')
-   return dirsWithoutIndex
-};
-
-export const getComponentsFoldersRecursive = (entry) => {
+const getComponentsFoldersRecursive = (entry) => {
   const finalListOfDirs = [];
   const dirs = fs.readdirSync(entry)
   while (dirs.length !== 0){
@@ -54,7 +43,6 @@ export const getComponentsFoldersRecursive = (entry) => {
 
 console.log(getComponentsFoldersRecursive('./src'));
 
-
 const folderBuilds = getComponentsFoldersRecursive('./src').map((folder) => {
   return {
     input: `src/${folder}/index.ts`,
@@ -64,56 +52,22 @@ const folderBuilds = getComponentsFoldersRecursive('./src').map((folder) => {
       sourcemap: true,
       format: 'esm',
     },
+    // {
+    //   file: `build/${folder}/index.cjs`,
+    //   sourcemap: true,
+    //   format: 'cjs',
+    // }
     ],
     plugins: [
         ...plugins,
-    ]
-  };
-});
-
-const packageJsonFile = getComponentsFolders('./src').map((folder) => {
-  return {
-    input: `src/${folder}/index.ts`,
-    output: {
-      file: `build/${folder}/cjs/index.js`,
-      sourcemap: true,
-      format: 'cjs',
-    },
-    plugins: [
-      typescript(),
-      generatePackageJson({
-        outputFolder: `build/${folder}`,
-        baseContents: {
-          name: `${packageJson.name}/${folder}`,
-          private: true,
-          main: "./cjs/index.js", // --> points to cjs format entry point of whole library
-          module: "./esm/index.js", // --> points to esm format entry point of individual component
-          types: "./index.d.ts", // --> points to types definition file of individual component
-        },
-     }),
     ],
+    external: ['point2point'],
   };
 });
-
-const types = getComponentsFoldersRecursive('./src').map((folder) => {
-  return {
-    input: `src/${folder}/index.ts`,
-    output: {
-      file: `build/${folder}/index.d.ts`,
-      format: "es",
-    },
-    plugins: [
-      dts.default(),
-    ],
-  };
-
-});
-// folderBuilds.push(...types);
-
-
-// console.log(folderBuilds);
 
 export default [
+  ...folderBuilds,
+  // the overarching package build
   {
     input: 'src/index.ts',
     output: [{
@@ -121,7 +75,7 @@ export default [
       format: 'cjs',
       name: '@niuee/board',
       sourcemap: true,
-    },  
+    },
     {
       file: packageJson.module,
       format: 'esm',
@@ -131,38 +85,15 @@ export default [
     ],
     plugins: [
       resolve(),
-      commonjs(),
       typescript({
-        tsconfig: './tsconfig.json',
+        tsconfig: "./tsconfig.json",
+        exclude: ["node_modules", "**/*.test.ts", "dist", "build", "devserver/**/*"],
         declaration: true,
-        declarationDir: "./build",
       }),
       terser({
-        mangle: false,
+        mangle: true,
       }),
     ],
-    external: ['typedoc']
+    external: ['typedoc'],
   },
-  {
-    // distribution for direct browser usage
-    input: 'src/index.ts',
-    output: {
-      file: 'dist/index.js',
-      format: 'cjs',
-      name: 'board',
-      sourcemap: true,
-    },
-    plugins: [
-      resolve(),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.json',
-        declaration: false,
-      }),
-      terser({
-        mangle: false,
-      }),
-    ],
-    external: ['typedoc']
-  }
 ];
