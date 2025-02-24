@@ -39,6 +39,7 @@ export function load(app: Application) {
         case "generate":
             app.logger.info(`Generating translation jsons for ${l10nCode}`);
             const res = generateTranslationJSON(l10nCode, context);
+            app.logger.info(`Finished Generating translation jsons for ${l10nCode}`);
             const projectReflection = context.project;
             for(const key in res){
                 const item = res[key];
@@ -256,78 +257,116 @@ type TranslationNode = {
 
 function dfs(node: Reflection, path: string[] = [], humanReadablePath: string[] = []){
     const res: Translation = {};
+    if(node === undefined){
+        return res;
+    }
     if((node.flags && "isExternal" in node.flags && node.flags.isExternal)){
         return res;
     }
-    if("categories" in node && node.categories !== undefined){
-        const categories = getCategoryStrings(node as ProjectReflection, path, humanReadablePath);
-        if(categories !== undefined){
-            categories.forEach((category)=>{
-                res[category.translationKey] = category;
+    try{
+        if("categories" in node && node.categories !== undefined){
+            const categories = getCategoryStrings(node as ProjectReflection, path, humanReadablePath);
+            if(categories !== undefined){
+                categories.forEach((category)=>{
+                    res[category.translationKey] = category;
+                });
+            }
+        }
+    } catch(e){
+        throw new Error("Error parsing categories");
+        // console.error("Error parsing categories", e);
+    }
+    try{
+        if("groups" in node && node.groups !== undefined){
+            const groups = getGroups(node as ProjectReflection | ContainerReflection | DeclarationReflection, path, humanReadablePath);
+            if(groups !== undefined && groups.length > 0){
+                groups.forEach((group)=>{
+                    res[group.translationKey] = group;
+                });
+            }
+        }
+    } catch (e){
+        throw new Error("Error parsing groups");
+        // console.error("Error parsing groups", e);
+    }
+    try{
+        if(node.comment !== undefined){
+            const translations = parseTranslationComment(node, path, humanReadablePath);
+            const translationBlocks = parseTranslationBlockComment(node, path, humanReadablePath);
+            translations.forEach((translation)=>{
+                res[translation.translationKey] = translation;
+            });
+            translationBlocks.forEach((translation)=>{
+                res[translation.translationKey] = translation;
             });
         }
+    } catch(e){
+        throw new Error("Error parsing translation comment");
+        // console.error("Error parsing translation comment", e);
     }
-    if("groups" in node && node.groups !== undefined){
-        const groups = getGroups(node as ProjectReflection | ContainerReflection | DeclarationReflection, path, humanReadablePath);
-        if(groups !== undefined && groups.length > 0){
-            groups.forEach((group)=>{
-                res[group.translationKey] = group;
+    try{
+        if("children" in node && node.children !== undefined){
+            const children = node.children as Reflection[];
+            children.forEach((child, index)=>{
+                const localRes = dfs(child, [...path, "children", `index-${index}`], [...humanReadablePath, child.name]);
+                const translationKeys = Object.keys(localRes);
+                for (const key of translationKeys){
+                    res[key] = localRes[key];
+                }
             });
         }
+    } catch (e){
+        throw new Error(`Error parsing children: ${e}`);
+        // console.error("Error parsing children", e);
     }
-    if(node.comment !== undefined){
-        const translations = parseTranslationComment(node, path, humanReadablePath);
-        const translationBlocks = parseTranslationBlockComment(node, path, humanReadablePath);
-        translations.forEach((translation)=>{
-            res[translation.translationKey] = translation;
-        });
-        translationBlocks.forEach((translation)=>{
-            res[translation.translationKey] = translation;
-        });
+    try{
+        if("signatures" in node && node.signatures !== undefined){
+            const signatures = node.signatures as Reflection[];
+            signatures.forEach((signature, index)=>{
+                const localRes = dfs(signature, [...path, "signatures", `index-${index}`], [...humanReadablePath, signature.name]);
+                const translationKeys = Object.keys(localRes);
+                for (const key of translationKeys){
+                    res[key] = localRes[key];
+                }
+            });
+        }
+    } catch(e){
+        throw new Error("Error parsing signatures");
+        // console.error("Error parsing signatures", e);
     }
-    if("children" in node){
-        const children = node.children as Reflection[];
-        children.forEach((child, index)=>{
-            const localRes = dfs(child, [...path, "children", `index-${index}`], [...humanReadablePath, child.name]);
+    try{
+        if("getSignature" in node && node.getSignature !== undefined){
+            const accessorComment = parseAccessorComment(node.getSignature as Reflection, path, node, humanReadablePath);
+            accessorComment.forEach((translationItem)=>{
+                res[translationItem.translationKey] = translationItem;
+            });
+            const getSignature = node.getSignature as Reflection;
+            const localRes = dfs(getSignature, [...path, `getSignature`], [...humanReadablePath, getSignature.name]);
             const translationKeys = Object.keys(localRes);
             for (const key of translationKeys){
                 res[key] = localRes[key];
             }
-        });
+        }
+    } catch(e){
+        throw new Error("Error parsing getSignature");
+        // console.error("Error parsing getSignature", e);
     }
-    if("signatures" in node){
-        const signatures = node.signatures as Reflection[];
-        signatures.forEach((signature, index)=>{
-            const localRes = dfs(signature, [...path, "signatures", `index-${index}`], [...humanReadablePath, signature.name]);
+    try{
+        if("setSignature" in node && node.setSignature !== undefined){
+            const accessorComment = parseAccessorComment(node.setSignature as Reflection, path, node, humanReadablePath);
+            accessorComment.forEach((translationItem)=>{
+                res[translationItem.translationKey] = translationItem;
+            });
+            const setSignature = node.setSignature as Reflection;
+            const localRes = dfs(setSignature, [...path, `setSignature`], [...humanReadablePath, setSignature.name]);
             const translationKeys = Object.keys(localRes);
             for (const key of translationKeys){
                 res[key] = localRes[key];
             }
-        });
-    }
-    if("getSignature" in node){
-        const accessorComment = parseAccessorComment(node.getSignature as Reflection, path, node, humanReadablePath);
-        accessorComment.forEach((translationItem)=>{
-            res[translationItem.translationKey] = translationItem;
-        });
-        const getSignature = node.getSignature as Reflection;
-        const localRes = dfs(getSignature, [...path, `getSignature`], [...humanReadablePath, getSignature.name]);
-        const translationKeys = Object.keys(localRes);
-        for (const key of translationKeys){
-            res[key] = localRes[key];
         }
-    }
-    if("setSignature" in node){
-        const accessorComment = parseAccessorComment(node.setSignature as Reflection, path, node, humanReadablePath);
-        accessorComment.forEach((translationItem)=>{
-            res[translationItem.translationKey] = translationItem;
-        });
-        const setSignature = node.setSignature as Reflection;
-        const localRes = dfs(setSignature, [...path, `setSignature`], [...humanReadablePath, setSignature.name]);
-        const translationKeys = Object.keys(localRes);
-        for (const key of translationKeys){
-            res[key] = localRes[key];
-        }
+    } catch(e){
+        throw new Error("Error parsing setSignature");
+        // console.error("Error parsing setSignature", e);
     }
     return res;
 }
@@ -379,7 +418,7 @@ function parseAccessorComment(node: Reflection, path: string[], parentNode: Refl
 function parseTranslationComment(node: Reflection, path: string[], humanReadablePath: string[] = []){
     const translationItems: TranslationItem[] = [];
     if (node.comment !== undefined){
-        node.comment.getTags("@translation").forEach((comment)=>{
+        node.comment.getTags("@description").forEach((comment)=>{
             comment.content.forEach((content, index)=>{
                 if(content.kind !== "text"){
                     node.comment.summary.push({...content});
@@ -412,7 +451,7 @@ function parseTranslationComment(node: Reflection, path: string[], humanReadable
                 translationItems.push(item);
             });
         });
-        node.comment.removeTags("@translation");
+        node.comment.removeTags("@description");
     }
     return translationItems;
 }

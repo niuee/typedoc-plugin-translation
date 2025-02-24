@@ -86,7 +86,7 @@ export default [
         declaration: true,
       }),
       terser({
-        mangle: true,
+        mangle: false,
       }),
     ],
     external: ['typedoc'],
